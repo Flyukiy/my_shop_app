@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:my_shop_app/providers/products.dart';
 import 'package:provider/provider.dart';
+
+import '../providers/products.dart';
 import '../providers/product.dart';
 
 class EditProductScreen extends StatefulWidget {
@@ -17,6 +18,8 @@ class _EditProductScreenState extends State<EditProductScreen> {
   final _imageUrlFocusNode = FocusNode();
   final _form = GlobalKey<FormState>();
   var isInit = true;
+  var isLoading = false;
+
   var _editedData = Product(
     id: null,
     title: '',
@@ -76,13 +79,26 @@ class _EditProductScreenState extends State<EditProductScreen> {
     if (!isValid) {
       return null;
     }
+    setState(() {
+      isLoading = true;
+    });
+
     _form.currentState.save();
     if (_editedData.id == null) {
-      Provider.of<Products>(context, listen: false).addProduct(_editedData);
+      Provider.of<Products>(context, listen: false).addProduct(_editedData).then((_) {
+        setState(() {
+          isLoading = true;
+        });
+        Navigator.of(context).pop();
+      });
     } else {
       Provider.of<Products>(context, listen: false).updateProduct(_editedData.id, _editedData);
+      setState(() {
+        isLoading = true;
+      });
+      Navigator.of(context).pop();
     }
-    Navigator.of(context).pop();
+    // Navigator.of(context).pop();
   }
 
   @override
@@ -97,7 +113,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
           ),
         ],
       ),
-      body: Padding(
+      body: isLoading ? Center(child: CircularProgressIndicator(),) : Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _form,
