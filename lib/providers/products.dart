@@ -39,6 +39,9 @@ class Products with ChangeNotifier {
     //       'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Cast-Iron-Pan.jpg/1024px-Cast-Iron-Pan.jpg',
     // ),
   ];
+  final String tokenAuth;
+  final String userId;
+  Products(this.tokenAuth, this.userId, this._items);
 
   // var _showFavoritesOnly = false;
 
@@ -67,9 +70,10 @@ class Products with ChangeNotifier {
     return _items.firstWhere((product) => product.id == productId);
   }
 
-  Future<void> fetchAndSetProducts() async {
-    const url =
-        'https://flutter-project-780b6-default-rtdb.firebaseio.com/products.json';
+  Future<void> fetchAndSetProducts([bool filterByUser = false]) async {
+    final filterString = filterByUser ? 'orderBy="creatorId"&equalTo="$userId"' : '';
+    var url =
+        'https://flutter-project-780b6-default-rtdb.firebaseio.com/products.json?auth=$tokenAuth&$filterString';
     try {
       List<Product> loadedProducts = [];
       final response = await http.get(url);
@@ -77,11 +81,15 @@ class Products with ChangeNotifier {
       if (extractedData == null) {
         return;
       }
+      url = 'https://flutter-project-780b6-default-rtdb.firebaseio.com/userFavorites/$userId.json?auth=$tokenAuth';
+      final favoriteResponse = await http.get(url);
+      final favoriteData = json.decode(favoriteResponse.body);
       extractedData.forEach((prodId, prodData) {
         loadedProducts.add(Product(
           price: prodData['price'],
           id: prodId,
           imageUrl: prodData['imageUrl'],
+          isFavorite: favoriteData == null ? false : favoriteData[prodId] ?? false,
           description: prodData['description'],
           title: prodData['title'],
         ));
@@ -94,8 +102,8 @@ class Products with ChangeNotifier {
   }
 
   Future<void> addProduct(Product product) async {
-    const url =
-        'https://flutter-project-780b6-default-rtdb.firebaseio.com/products.json';
+    final url =
+        'https://flutter-project-780b6-default-rtdb.firebaseio.com/products.json?auth=$tokenAuth';
     try {
       final response = await http.post(
         url,
@@ -105,7 +113,7 @@ class Products with ChangeNotifier {
             'description': product.description,
             'imageUrl': product.imageUrl,
             'price': product.price,
-            'isFavorite': product.isFavorite,
+            'creatorId': userId,
           },
         ),
       );
@@ -127,7 +135,7 @@ class Products with ChangeNotifier {
   Future<void> updateProduct(String id, Product newProduct) async {
     final prodId = _items.indexWhere((element) => element.id == id);
     if (prodId >= 0) {
-      final url = 'https://flutter-project-780b6-default-rtdb.firebaseio.com/products/$id.json';
+      final url = 'https://flutter-project-780b6-default-rtdb.firebaseio.com/products/$id.json?auth=$tokenAuth';
       await http.post(
         url,
         body: json.encode({
@@ -143,7 +151,7 @@ class Products with ChangeNotifier {
   }
 
   Future<void> deleteProduct(String id) async {
-    final url = 'https://flutter-project-780b6-default-rtdb.firebaseio.com/products/$id.json';
+    final url = 'https://flutter-project-780b6-default-rtdb.firebaseio.com/products/$id.json?auth=$tokenAuth';
     final existingProdIndex = _items.indexWhere((element) => element.id == id);
     var existingProd = _items[existingProdIndex];
 
